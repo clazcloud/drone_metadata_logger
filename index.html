@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Flight Logger</title>
+    <!-- Use the Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Load Tailwind CSS from CDN for a clean, modern look -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom scrollbar styles for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- The main container for the application -->
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg space-y-6">
+
+        <!-- Logo section - add your logo here -->
+        <div class="flex justify-center mb-6">
+            <img src="logo.png" alt="Company Logo" class="h-48 w-48">
+        </div>
+
+        <h1 class="text-3xl font-bold text-center text-gray-800">Drone Flight Log</h1>
+
+        <!-- JSON sidecar for easy configuration. You can edit this data directly. -->
+        <script id="config-data" type="application/json">
+            {
+                "droneIds": ["Arace_Angel_001", "Acecore_NOA_001", "Mavic_M3M_001", "Earthdrone_001", "Flame_Wheel_F550_001"],
+                "sensors": [
+                    {"id": "hyperspectral", "name": "Hyspex Mjolnir"},
+                    {"id": "dropper", "name": "Thermochron Dropper"},
+                    {"id": "lidar-epic", "name": "EPIC W50"},
+                    {"id": "lidar-riegel", "name": "Riegel VUX-120"},
+                    {"id": "multi-spectral", "name": "Sony Sextuple Multi-Spectral"}
+                ]
+            }
+        </script>
+
+        <!-- Form fields container -->
+        <div class="space-y-4">
+            <!-- Date Picker -->
+            <div>
+                <label for="flight-date" class="block text-sm font-semibold text-gray-700 mb-1">Flight Date</label>
+                <input type="date" id="flight-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+            </div>
+
+            <!-- Drone ID Selector -->
+            <div>
+                <label for="drone-id" class="block text-sm font-semibold text-gray-700 mb-1">Drone ID</label>
+                <select id="drone-id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <!-- Sensor Checkboxes -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Attached Sensors</label>
+                <div id="sensor-checkboxes" class="space-y-2">
+                    <!-- Checkboxes will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Additional Notes Textarea -->
+            <div>
+                <label for="flight-notes" class="block text-sm font-semibold text-gray-700 mb-1">Flight Notes</label>
+                <textarea id="flight-notes" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out" placeholder="Add any relevant notes here..."></textarea>
+            </div>
+        </div>
+
+        <!-- SAVE Button -->
+        <button id="save-button" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+            SAVE Log as JSON File
+        </button>
+
+    </div>
+
+    <script>
+        // Wait for the entire document to be loaded before running the script
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Function to initialize the form with data from the JSON sidecar
+            function initializeForm() {
+                try {
+                    // Get the JSON data from the script tag
+                    const configDataElement = document.getElementById('config-data');
+                    const configData = JSON.parse(configDataElement.textContent);
+
+                    const droneSelect = document.getElementById('drone-id');
+                    const sensorsContainer = document.getElementById('sensor-checkboxes');
+
+                    // Populate the Drone ID dropdown
+                    configData.droneIds.forEach(id => {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = id;
+                        droneSelect.appendChild(option);
+                    });
+
+                    // Populate the sensor checkboxes dynamically
+                    configData.sensors.forEach(sensor => {
+                        const div = document.createElement('div');
+                        div.className = "flex items-center";
+
+                        const input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.id = sensor.id;
+                        input.value = sensor.name;
+                        input.className = "h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer";
+
+                        const label = document.createElement('label');
+                        label.htmlFor = sensor.id;
+                        label.textContent = sensor.name;
+                        label.className = "ml-2 block text-sm text-gray-900";
+
+                        div.appendChild(input);
+                        div.appendChild(label);
+                        sensorsContainer.appendChild(div);
+                    });
+                } catch (error) {
+                    console.error("Failed to parse configuration data:", error);
+                }
+            }
+
+            // Function to handle the saving of the JSON file
+            function handleSave() {
+                // Get references to all input elements
+                const flightDate = document.getElementById('flight-date').value;
+                const droneId = document.getElementById('drone-id').value;
+                const flightNotes = document.getElementById('flight-notes').value;
+
+                // Get all selected sensors
+                const selectedSensors = Array.from(document.querySelectorAll('#sensor-checkboxes input[type="checkbox"]:checked'))
+                                           .map(checkbox => ({
+                                               id: checkbox.id,
+                                               name: checkbox.value
+                                           }));
+
+                // Check for required fields before saving
+                if (!flightDate || !droneId) {
+                    alert("Please select a date and a drone ID.");
+                    return;
+                }
+
+                // Construct the JSON object with the metadata
+                const metadata = {
+                    flightDate: flightDate,
+                    droneId: droneId,
+                    sensors: selectedSensors,
+                    notes: flightNotes,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Convert the object to a JSON string with indentation for readability
+                const jsonString = JSON.stringify(metadata, null, 2);
+
+                // Create a Blob from the JSON string
+                const blob = new Blob([jsonString], { type: 'application/json' });
+
+                // Create a temporary link element to trigger the download
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = `drone_meta_data.json`;
+                // downloadLink.download = `drone-log-${droneId}-${flightDate}.json`;
+                
+                // Programmatically click the link to start the download
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                // Clean up by revoking the object URL
+                URL.revokeObjectURL(downloadLink.href);
+            }
+
+            // Initialize the form on page load
+            initializeForm();
+
+            // Attach the click event listener to the SAVE button
+            document.getElementById('save-button').addEventListener('click', handleSave);
+        });
+    </script>
+
+</body>
+</html>
